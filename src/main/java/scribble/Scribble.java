@@ -32,7 +32,7 @@ public class Scribble extends Application {
       for (int i = 0; i < 5; i++) {
         Thread.sleep(1000);
         Platform.runLater(() -> {
-          controller.createSquare();
+          controller.createBox();
         });
       }
       return null;

@@ -12,23 +12,24 @@ import javafx.beans.binding.DoubleBinding;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.TextArea;
 import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundImage;
 import javafx.scene.layout.BackgroundSize;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
-import javafx.scene.paint.Color;
 import javafx.scene.shape.Path;
-import javafx.scene.shape.Polygon;
 import javafx.util.Duration;
 
 public class Controller {
   private static final BackgroundSize STRETCH = new BackgroundSize(1, 1, true, true, false, false);
+  private static final Image UNFOCUSED_BOX = new Image("/empty-black-box.png");
+  private static final Image FOCUSED_BOX = new Image("/empty-blue-box.png");
+
   @FXML
   private TextArea textArea;
   @FXML
@@ -91,6 +92,17 @@ public class Controller {
         root.heightProperty(), //
         root.widthProperty().multiply(height).divide(width)//
     ));
+
+    // Bind textArea
+    ChangeListener<? super Node> focusOwnerListener = (observable, oldValue, newValue) -> {
+      textArea.setText(String.valueOf(newValue.hashCode()));
+    };
+    textArea.sceneProperty().addListener((observable, oldValue, newValue) -> {
+      if (oldValue != null)
+        oldValue.focusOwnerProperty().removeListener(focusOwnerListener);
+      if (newValue != null)
+        newValue.focusOwnerProperty().addListener(focusOwnerListener);
+    });
   }
 
   public void setData(Duration duration, Path path, Image image) {
@@ -99,38 +111,24 @@ public class Controller {
     setImage(image);
   }
 
-  public Node createSquare() {
-    double halfWidth = 10;
-    double centerX = getImage().getWidth() / 2;
-    double centerY = getImage().getHeight() / 2;
+  public Node createBox() {
+    ImageView box = new ImageView();
+    box.setPickOnBounds(true);
+    box.imageProperty()
+        .bind(createObjectBinding(box.focusedProperty(), it -> it ? FOCUSED_BOX : UNFOCUSED_BOX));
+    box.setX(getImage().getWidth() / 2 - box.getImage().getWidth() / 2);
+    box.setY(getImage().getHeight() / 2 - box.getImage().getHeight() / 2);
 
-    Polygon square = new Polygon(//
-        centerX - halfWidth, centerY - halfWidth, //
-        centerX - halfWidth, centerY + halfWidth, //
-        centerX + halfWidth, centerY + halfWidth, //
-        centerX + halfWidth, centerY - halfWidth //
-    );
-    square.setFocusTraversable(true);
-    square.setOnMouseClicked(e -> square.requestFocus());
-    square.focusedProperty().addListener(new ChangeListener<Boolean>() {
-      @Override
-      public void changed(ObservableValue<? extends Boolean> observable, Boolean oldValue,
-          Boolean newValue) {
-        if (newValue) {
-          textArea.setText(String.valueOf(square.hashCode()));
-        }
-      }
-    });
-    square.fillProperty()
-        .bind(createObjectBinding(square.focusedProperty(), it -> it ? Color.BLUE : Color.BLACK));
+    box.setFocusTraversable(true);
+    box.setOnMouseClicked(e -> box.requestFocus());
 
-    PathTransition transition = new PathTransition(duration, path, square);
+    PathTransition transition = new PathTransition(duration, path, box);
     transition.setInterpolator(Interpolator.LINEAR);
     transition.setOnFinished(e -> System.exit(0));
     transition.play();
 
-    animationPane.getChildren().add(square);
-    return square;
+    animationPane.getChildren().add(box);
+    return box;
   }
 
 }
